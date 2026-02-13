@@ -5,8 +5,7 @@ import itertools
 import random
 import string
 from collections import namedtuple
-from django.test import override_settings, TestCase
-from unittest import mock
+from unittest import TestCase, mock
 
 import ddt
 from xblock.field_data import DictFieldData
@@ -14,7 +13,7 @@ from xblock.fields import NO_CACHE_VALUE, UNIQUE_ID, ScopeIds
 from xblock.runtime import Runtime
 
 from openedx.core.lib.safe_lxml import etree
-from xmodule import discussion_block
+from xmodule.discussion_block import DiscussionXBlock
 
 
 def attribute_pair_repr(self):
@@ -55,12 +54,11 @@ def _make_attribute_test_cases():
 
 
 @ddt.ddt
-class _DiscussionXBlockImportExportTestsBase(TestCase):
+class DiscussionXBlockImportExportTests(TestCase):
     """
     Import and export tests
     """
     DISCUSSION_XBLOCK_LOCATION = "xmodule.discussion_block.DiscussionXBlock"
-    __test__ = False
 
     def setUp(self):
         """
@@ -71,7 +69,6 @@ class _DiscussionXBlockImportExportTestsBase(TestCase):
         self.runtime_mock = mock.Mock(spec=Runtime)
         self.runtime_mock.construct_xblock_from_class = mock.Mock(side_effect=self._construct_xblock_mock)
         self.runtime_mock.get_policy = mock.Mock(return_value={})
-        self.discussion_xblock_class = discussion_block.reset_class()
 
     def _construct_xblock_mock(self, cls, keys):  # pylint: disable=unused-argument
         """
@@ -79,7 +76,7 @@ class _DiscussionXBlockImportExportTestsBase(TestCase):
 
         Signature-compatible with runtime.construct_xblock_from_class - can be used as a mock side-effect
         """
-        return self.discussion_xblock_class(self.runtime_mock, scope_ids=keys, field_data=DictFieldData({}))
+        return DiscussionXBlock(self.runtime_mock, scope_ids=keys, field_data=DictFieldData({}))
 
     @mock.patch(DISCUSSION_XBLOCK_LOCATION + ".load_definition_xml")
     @ddt.unpack
@@ -104,7 +101,7 @@ class _DiscussionXBlockImportExportTestsBase(TestCase):
 
         patched_load_definition_xml.side_effect = Exception("Irrelevant")
 
-        block = self.discussion_xblock_class.parse_xml(node, self.runtime_mock, self.keys)
+        block = DiscussionXBlock.parse_xml(node, self.runtime_mock, self.keys)
         try:
             assert block.discussion_id == id_pair.value
             assert block.discussion_category == category_pair.value
@@ -136,7 +133,7 @@ class _DiscussionXBlockImportExportTestsBase(TestCase):
 
         patched_load_definition_xml.return_value = (definition_node, "irrelevant")
 
-        block = self.discussion_xblock_class.parse_xml(node, self.runtime_mock, self.keys)
+        block = DiscussionXBlock.parse_xml(node, self.runtime_mock, self.keys)
         try:
             assert block.discussion_id == id_pair.value
             assert block.discussion_category == category_pair.value
@@ -159,7 +156,7 @@ class _DiscussionXBlockImportExportTestsBase(TestCase):
         """
         target_node = etree.Element('dummy')
 
-        block = self.discussion_xblock_class(self.runtime_mock, scope_ids=self.keys, field_data=DictFieldData({}))
+        block = DiscussionXBlock(self.runtime_mock, scope_ids=self.keys, field_data=DictFieldData({}))
         discussion_id_field = block.fields['discussion_id']  # pylint: disable=unsubscriptable-object
 
         # precondition checks - discussion_id does not have a value and uses UNIQUE_ID
@@ -177,7 +174,7 @@ class _DiscussionXBlockImportExportTestsBase(TestCase):
         """
         target_node = etree.Element('dummy')
 
-        block = self.discussion_xblock_class(self.runtime_mock, scope_ids=self.keys, field_data=DictFieldData({}))
+        block = DiscussionXBlock(self.runtime_mock, scope_ids=self.keys, field_data=DictFieldData({}))
         block.discussion_id = discussion_id
 
         # precondition check
@@ -186,13 +183,3 @@ class _DiscussionXBlockImportExportTestsBase(TestCase):
         block.add_xml_to_node(target_node)
         assert target_node.tag == 'discussion'
         assert target_node.attrib['discussion_id'], discussion_id
-
-
-@override_settings(USE_EXTRACTED_DISCUSSION_BLOCK=True)
-class DiscussionXBlockImportExportTestsExtracted(_DiscussionXBlockImportExportTestsBase):
-    __test__ = True
-
-
-@override_settings(USE_EXTRACTED_DISCUSSION_BLOCK=False)
-class DiscussionXBlockImportExportTestsBuiltIn(_DiscussionXBlockImportExportTestsBase):
-    __test__ = True
