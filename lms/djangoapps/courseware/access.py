@@ -32,6 +32,7 @@ from lms.djangoapps.courseware.access_utils import (
     ACCESS_DENIED,
     ACCESS_GRANTED,
     check_course_open_for_learner,
+    check_public_access,
     check_start_date,
     debug,
 )
@@ -41,6 +42,7 @@ from lms.djangoapps.ccx.models import CustomCourseForEdX
 from lms.djangoapps.mobile_api.models import IgnoreMobileAvailableFlagConfig
 from lms.djangoapps.courseware.toggles import course_is_invitation_only
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.core.djangoapps.content.learning_sequences.models import CourseContext, LearningContext
 from openedx.features.course_duration_limits.access import check_course_expired
 from common.djangoapps.student import auth
 from common.djangoapps.student.models import CourseEnrollmentAllowed
@@ -61,7 +63,12 @@ from common.djangoapps.util.milestones_helpers import (
     get_pre_requisite_courses_not_completed,
     is_prerequisite_courses_enabled
 )
-from xmodule.course_block import CATALOG_VISIBILITY_ABOUT, CATALOG_VISIBILITY_CATALOG_AND_ABOUT, CourseBlock  # lint-amnesty, pylint: disable=wrong-import-order
+from xmodule.course_block import (  # lint-amnesty, pylint: disable=wrong-import-order
+    CATALOG_VISIBILITY_ABOUT,
+    CATALOG_VISIBILITY_CATALOG_AND_ABOUT,
+    COURSE_VISIBILITY_PUBLIC,
+    CourseBlock,
+)
 from xmodule.error_block import ErrorBlock  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.partitions.partitions import NoSuchUserPartitionError, NoSuchUserPartitionGroupError  # lint-amnesty, pylint: disable=wrong-import-order
 
@@ -364,6 +371,10 @@ def _has_access_course(user, action, courselike):
             else:
                 return visible_to_nonstaff
 
+        # Anonymous users on public courses can load (so course_metadata returns has_access and MFE doesn't redirect).
+        if not user.is_authenticated and check_public_access(courselike, [COURSE_VISIBILITY_PUBLIC]):
+            return ACCESS_GRANTED
+
         open_for_learner = check_course_open_for_learner(user, courselike)
         if not open_for_learner:
             staff_access = _has_staff_access_to_block(user, courselike, courselike.id)
@@ -581,6 +592,19 @@ def _has_access_to_block(user, action, block, course_key=None):
         students to see blocks.  If not, views should check the course, so we
         don't have to hit the enrollments table on every block load.
         """
+        # If the user has staff access, they can load the block and checks below are not needed.
+        staff_access_response = _has_staff_access_to_block(user, block, course_key)
+        if staff_access_response:
+            return staff_access_response
+
+        # Anonymous users: allow block load when course has public (unenrolled) access,
+        # so that Learning MFE and sequence API can serve public_view without requiring login.
+        if not user.is_authenticated and course_key:
+            course_like = _get_course_like_for_public_access(course_key)
+            if course_like and check_public_access(course_like, [COURSE_VISIBILITY_PUBLIC]):
+                # Only visibility check; skip start date so sequence metadata matches outline API.
+                return _visible_to_nonstaff_users(block, display_error_to_user=False)
+
         # If the user (or the role the user is currently masquerading as) does not have
         # access to this content, then deny access. The problem with calling _has_staff_access_to_block
         # before this method is that _has_staff_access_to_block short-circuits and returns True
@@ -588,11 +612,6 @@ def _has_access_to_block(user, action, block, course_key=None):
         group_access_response = _has_group_access(block, user, course_key)
         if not group_access_response:
             return group_access_response
-
-        # If the user has staff access, they can load the block and checks below are not needed.
-        staff_access_response = _has_staff_access_to_block(user, block, course_key)
-        if staff_access_response:
-            return staff_access_response
 
         return (
             _visible_to_nonstaff_users(block, display_error_to_user=False) and
@@ -692,6 +711,36 @@ def _has_access_string(user, action, perm):
 
 
 #####  Internal helper methods below
+
+def _get_course_like_for_public_access(course_key):
+    """
+    Return an object with .id and .course_visibility for check_public_access.
+    Prefer learning_sequences.CourseContext (same source as outline API).
+    """
+    try:
+        course_context = (
+            LearningContext.objects
+            .select_related('course_context')
+            .get(context_key=course_key)
+            .course_context
+        )
+        return type('CourseLike', (), {
+            'id': course_key,
+            'course_visibility': course_context.course_visibility,
+        })()
+    except (LearningContext.DoesNotExist, CourseContext.DoesNotExist):
+        pass
+    try:
+        overview = CourseOverview.get_from_id(course_key)
+        if overview is not None:
+            return type('CourseLike', (), {
+                'id': course_key,
+                'course_visibility': overview.course_visibility,
+            })()
+    except (CourseOverview.DoesNotExist, IOError):
+        pass
+    return None
+
 
 def _dispatch(table, action, user, obj):
     """

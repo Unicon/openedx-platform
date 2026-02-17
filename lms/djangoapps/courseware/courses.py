@@ -35,8 +35,14 @@ from lms.djangoapps.courseware.access_response import (
     OldMongoAccessError,
     StartDateError
 )
-from lms.djangoapps.courseware.access_utils import check_authentication, check_data_sharing_consent, check_enrollment, \
-    check_correct_active_enterprise_customer, is_priority_access_error
+from lms.djangoapps.courseware.access_utils import (
+    check_authentication,
+    check_correct_active_enterprise_customer,
+    check_data_sharing_consent,
+    check_enrollment,
+    check_public_access,
+    is_priority_access_error,
+)
 from lms.djangoapps.courseware.context_processor import get_user_timezone_or_last_seen_timezone_or_utc
 from lms.djangoapps.courseware.courseware_access_exception import CoursewareAccessException
 from lms.djangoapps.courseware.date_summary import (
@@ -66,6 +72,7 @@ from openedx.core.lib.courses import get_course_by_id
 from openedx.features.course_duration_limits.access import AuditExpiredError
 from openedx.features.course_experience import RELATIVE_DATES_FLAG
 from openedx.features.course_experience.utils import is_block_structure_complete_for_assignments
+from xmodule.course_block import COURSE_VISIBILITY_PUBLIC  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.modulestore.django import modulestore  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.modulestore.exceptions import ItemNotFoundError  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.x_module import STUDENT_VIEW  # lint-amnesty, pylint: disable=wrong-import-order
@@ -245,6 +252,11 @@ def check_course_access_with_redirect(
     if not access_response:
         # StartDateError should be ignored
         if isinstance(access_response, StartDateError) and allow_not_started_courses:
+            return
+        # Anonymous users on public courses can view before start date (e.g. Learning MFE public_view).
+        if isinstance(access_response, StartDateError) and not user.is_authenticated and check_public_access(
+            course, [COURSE_VISIBILITY_PUBLIC]
+        ):
             return
         # Redirect if StartDateError
         if isinstance(access_response, StartDateError):
