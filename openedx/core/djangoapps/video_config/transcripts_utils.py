@@ -789,7 +789,7 @@ class VideoTranscriptsMixin:
         # TODO: This causes a circular import when imported at the top-level.
         #       This import will be removed as part of the VideoBlock extraction.
         #       https://github.com/openedx/edx-platform/issues/36282
-        from xmodule.video_block.bumper_utils import get_bumper_settings
+        from xblocks_contrib.video.bumper_utils import get_bumper_settings
 
         if is_bumper:
             transcripts = copy.deepcopy(get_bumper_settings(self).get('transcripts', {}))

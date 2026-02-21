@@ -66,12 +66,8 @@ from .test_video_handlers import BaseTestVideoXBlock, TestVideo
 from .test_video_xml import SOURCE_XML, PUBLIC_SOURCE_XML
 from common.test.utils import assert_dict_contains_subset
 
-if settings.USE_EXTRACTED_VIDEO_BLOCK:
-    from xblocks_contrib.video import bumper_utils
-    bumper_utils_path = 'xblocks_contrib.video.bumper_utils'
-else:
-    from xmodule.video_block import bumper_utils
-    bumper_utils_path = 'xmodule.video_block.bumper_utils'
+from xblocks_contrib.video import bumper_utils
+bumper_utils_path = 'xblocks_contrib.video.bumper_utils'
 
 TRANSCRIPT_FILE_SRT_DATA = """
 1
