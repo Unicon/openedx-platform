@@ -73,6 +73,7 @@ from xmodule.modulestore.tests.django_utils import SharedModuleStoreTestCase  # 
 from xmodule.modulestore.tests.factories import CourseFactory, BlockFactory, check_mongo_calls  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.partitions.partitions import Group, UserPartition  # lint-amnesty, pylint: disable=wrong-import-order
 # noinspection PyUnresolvedReferences
+from xmodule.tests.helpers import override_descriptor_system  # pylint: disable=unused-import
 
 from ..models import ReportStore
 from ..tasks_helper.utils import UPDATE_STATUS_FAILED, UPDATE_STATUS_SUCCEEDED
