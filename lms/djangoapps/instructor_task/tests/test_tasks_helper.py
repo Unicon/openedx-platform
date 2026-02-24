@@ -26,7 +26,7 @@ from pytz import UTC
 
 import openedx.core.djangoapps.user_api.course_tag.api as course_tag_api
 import openedx.core.djangoapps.content.block_structure.api as bs_api
-from xmodule.capa.tests.response_xml_factory import MultipleChoiceResponseXMLFactory  # lint-amnesty, pylint: disable=wrong-import-order
+from xblocks_contrib.problem.capa.tests.response_xml_factory import MultipleChoiceResponseXMLFactory  # lint-amnesty, pylint: disable=wrong-import-order
 from lms.djangoapps.course_blocks.transformers import library_content
 from common.djangoapps.course_modes.models import CourseMode
 from common.djangoapps.student.models import CourseEnrollment, CourseEnrollmentAllowed
@@ -73,7 +73,6 @@ from xmodule.modulestore.tests.django_utils import SharedModuleStoreTestCase  # 
 from xmodule.modulestore.tests.factories import CourseFactory, BlockFactory, check_mongo_calls  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.partitions.partitions import Group, UserPartition  # lint-amnesty, pylint: disable=wrong-import-order
 # noinspection PyUnresolvedReferences
-from xmodule.tests.helpers import override_descriptor_system  # pylint: disable=unused-import
 
 from ..models import ReportStore
 from ..tasks_helper.utils import UPDATE_STATUS_FAILED, UPDATE_STATUS_SUCCEEDED
@@ -2623,7 +2622,7 @@ class TestCertificateGeneration(InstructorTaskModuleTestCase):
 
         with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task') as mock_current_task:
             mock_current_task.return_value = current_task
-            with patch('xmodule.capa.xqueue_interface.XQueueInterface.send_to_queue') as mock_queue:
+            with patch('xblocks_contrib.problem.capa.xqueue_interface.XQueueInterface.send_to_queue') as mock_queue:
                 mock_queue.return_value = (0, "Successfully queued")
                 result = generate_students_certificates(
                     None, None, self.course.id, task_input, 'certificates generated'

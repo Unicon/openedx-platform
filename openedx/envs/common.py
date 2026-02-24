@@ -455,7 +455,7 @@ TEMPLATES = [
         'DIRS': [
             Derived(lambda settings: settings.PROJECT_ROOT / "templates"),
             COMMON_ROOT / 'templates',
-            XMODULE_ROOT / 'capa' / 'templates',
+            XMODULE_ROOT / 'templates' / 'capa',
             COMMON_ROOT / 'djangoapps' / 'pipeline_mako' / 'templates',
             COMMON_ROOT / 'static',  # required to statically include common Underscore templates
         ],
@@ -519,7 +519,6 @@ MAKO_TEMPLATE_DIRS_BASE = [
 # Since the CMS uses the LMS's list of mako template directories for the "preview"
 # template engine, we define the list here
 lms_mako_template_dirs_base = list(MAKO_TEMPLATE_DIRS_BASE)
-lms_mako_template_dirs_base.insert(2, XMODULE_ROOT / 'capa' / 'templates')
 lms_mako_template_dirs_base.append(OPENEDX_ROOT / 'features' / 'course_experience' / 'templates')
 
 CONTEXT_PROCESSORS = [
@@ -2203,10 +2202,10 @@ COURSES_WITH_UNSAFE_CODE = []
 ENABLE_CODEJAIL_REST_SERVICE = False
 
 # .. setting_name: CODE_JAIL_REST_SERVICE_REMOTE_EXEC
-# .. setting_default: 'xmodule.capa.safe_exec.remote_exec.send_safe_exec_request_v0'
+# .. setting_default: 'xblocks_contrib.problem.capa.safe_exec.remote_exec.send_safe_exec_request_v0'
 # .. setting_description: Set the python package.module.function that is reponsible of
 #   calling the remote service in charge of jailed code execution
-CODE_JAIL_REST_SERVICE_REMOTE_EXEC = 'xmodule.capa.safe_exec.remote_exec.send_safe_exec_request_v0'
+CODE_JAIL_REST_SERVICE_REMOTE_EXEC = 'xblocks_contrib.problem.capa.safe_exec.remote_exec.send_safe_exec_request_v0'
 
 # .. setting_name: CODE_JAIL_REST_SERVICE_HOST
 # .. setting_default: 'http://127.0.0.1:8550'
